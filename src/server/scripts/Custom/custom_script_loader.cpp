@@ -17,6 +17,7 @@
 
 // This is where scripts' loading functions should be declared:
 void AddSC_Transmogrification();
+void AddSc_npc_tool();
 
 
 // The name of this function should match:
@@ -24,4 +25,6 @@ void AddSC_Transmogrification();
 void AddCustomScripts()
 {
     AddSC_Transmogrification();
+	AddSc_npc_tool();
 }
+
