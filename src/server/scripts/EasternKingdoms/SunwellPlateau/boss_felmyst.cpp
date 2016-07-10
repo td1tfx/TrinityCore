@@ -204,6 +204,7 @@ public:
                 caster->CastSpell(caster, SPELL_VAPOR_TRIGGER, true);
             }*/
             // workaround for mind control
+			/*
             if (spell->Id == SPELL_FOG_INFORM)
             {
                 float x, y, z;
@@ -217,6 +218,7 @@ public:
                 }
                 me->DealDamage(caster, caster->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
             }
+			*/
         }
 
         void JustSummoned(Creature* summon) override

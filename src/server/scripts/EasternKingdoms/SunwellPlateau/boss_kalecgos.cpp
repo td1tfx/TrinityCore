@@ -55,7 +55,7 @@ enum Spells
     AURA_SPECTRAL_INVISIBILITY                  = 44801,
     AURA_DEMONIC_VISUAL                         = 44800,
 
-    SPELL_SPECTRAL_BLAST                        = 44869,
+    SPELL_SPECTRAL_BLAST                        = 44866,
     SPELL_TELEPORT_SPECTRAL                     = 46019,
     SPELL_ARCANE_BUFFET                         = 45018,
     SPELL_FROST_BREATH                          = 44799,
@@ -632,8 +632,8 @@ public:
 
             Initialize();
 
-            me->CastSpell(me, AURA_DEMONIC_VISUAL, true);
-            TeleportAllPlayersBack();
+            //me->CastSpell(me, AURA_DEMONIC_VISUAL, true);
+            //TeleportAllPlayersBack();
         }
 
         void EnterCombat(Unit* /*who*/) override
@@ -726,7 +726,8 @@ public:
             if (CheckTimer <= diff)
             {
                 Creature* Kalec = ObjectAccessor::GetCreature(*me, KalecGUID);
-                if (!Kalec || !Kalec->IsAlive())
+                /*
+				if (!Kalec || !Kalec->IsAlive())
                 {
                     if (Creature* Kalecgos = ObjectAccessor::GetCreature(*me, KalecgosGUID))
                         Kalecgos->AI()->EnterEvadeMode();
@@ -765,6 +766,7 @@ public:
                         return;
                     }
                 }
+				*/
                 CheckTimer = 1000;
             } else CheckTimer -= diff;
 

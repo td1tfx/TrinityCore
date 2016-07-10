@@ -61,7 +61,7 @@ enum CreatureIds
     NPC_KALEC                                = 24891,
     NPC_SATHROVARR                           = 24892,
     NPC_BRUTALLUS                            = 24882,
-    NPC_MADRIGOSA                            = 24895,
+    NPC_MADRIGOSA                            = 25160,
     NPC_FELMYST                              = 25038,
 
     NPC_DEAD                                 = 25268,
