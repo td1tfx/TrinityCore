@@ -1363,7 +1363,8 @@ void Unit::DealMeleeDamage(CalcDamageInfo* damageInfo, bool durabilityLoss)
     if (damageInfo->blocked_amount && damageInfo->TargetState != VICTIMSTATE_BLOCKS)
         victim->HandleEmoteCommand(EMOTE_ONESHOT_PARRY_SHIELD);
 
-    if (damageInfo->TargetState == VICTIMSTATE_PARRY)
+    if (damageInfo->TargetState == VICTIMSTATE_PARRY &&
+        (GetTypeId() != TYPEID_UNIT || (ToCreature()->GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NO_PARRY_HASTEN) == 0))
     {
         // Get attack timers
         float offtime  = float(victim->getAttackTimer(OFF_ATTACK));
@@ -2843,6 +2844,15 @@ float Unit::GetUnitCriticalChance(WeaponAttackType attackType, const Unit* victi
         crit += victim->GetTotalAuraModifier(SPELL_AURA_MOD_ATTACKER_RANGED_CRIT_CHANCE);
     else
         crit += victim->GetTotalAuraModifier(SPELL_AURA_MOD_ATTACKER_MELEE_CRIT_CHANCE);
+
+    AuraEffectList const& critChanceForCaster = victim->GetAuraEffectsByType(SPELL_AURA_MOD_CRIT_CHANCE_FOR_CASTER);
+    for (AuraEffect const* aurEff : critChanceForCaster)
+    {
+        if (aurEff->GetCasterGUID() != GetGUID())
+            continue;
+
+        crit += aurEff->GetAmount();
+    }
 
     crit += victim->GetTotalAuraModifier(SPELL_AURA_MOD_ATTACKER_SPELL_AND_WEAPON_CRIT_CHANCE);
 
@@ -6456,6 +6466,8 @@ bool Unit::HandleDummyAuraProc(Unit* victim, uint32 damage, AuraEffect* triggere
                 // 4 healing tick
                 basepoints0 = triggerAmount * damage / 400;
                 triggered_spell_id = 54203;
+                // Add remaining ticks to healing done
+                basepoints0 += victim->GetRemainingPeriodicAmount(GetGUID(), triggered_spell_id, SPELL_AURA_PERIODIC_HEAL);
                 break;
             }
             switch (dummySpell->Id)
@@ -7861,7 +7873,7 @@ bool Unit::HandleProcTriggerSpell(Unit* victim, uint32 damage, AuraEffect* trigg
         case 53232:
         {
             // This effect only from Rapid Fire (ability cast)
-            if (!(procSpell->SpellFamilyFlags[0] & 0x20))
+            if (!procSpell || !(procSpell->SpellFamilyFlags[0] & 0x20))
                 return false;
             break;
         }
@@ -7879,7 +7891,9 @@ bool Unit::HandleProcTriggerSpell(Unit* victim, uint32 damage, AuraEffect* trigg
         case 15337: // Improved Spirit Tap (Rank 1)
         case 15338: // Improved Spirit Tap (Rank 2)
         {
-            ASSERT(procSpell);
+            if (!procSpell)
+                return false;
+
             if (procSpell->SpellFamilyFlags[0] & 0x800000)
                 if ((procSpell->Id != 58381) || !roll_chance_i(50))
                     return false;
@@ -8055,7 +8069,7 @@ bool Unit::HandleProcTriggerSpell(Unit* victim, uint32 damage, AuraEffect* trigg
         // Astral Shift
         case 52179:
         {
-            if (procSpell == 0 || !(procEx & (PROC_EX_NORMAL_HIT|PROC_EX_CRITICAL_HIT)) || this == victim)
+            if (!procSpell || !(procEx & (PROC_EX_NORMAL_HIT|PROC_EX_CRITICAL_HIT)) || this == victim)
                 return false;
 
             // Need stun, fear or silence mechanic
@@ -8107,13 +8121,15 @@ bool Unit::HandleProcTriggerSpell(Unit* victim, uint32 damage, AuraEffect* trigg
         case 65081:
         {
             // Proc only from PW:S cast
-            if (!(procSpell->SpellFamilyFlags[0] & 0x00000001))
+            if (!procSpell || !(procSpell->SpellFamilyFlags[0] & 0x00000001))
                 return false;
             break;
         }
         // Culling the Herd
         case 70893:
         {
+            if (!procSpell)
+                return false;
             // check if we're doing a critical hit
             if (!(procSpell->SpellFamilyFlags[1] & 0x10000000) && (procEx != PROC_EX_CRITICAL_HIT))
                 return false;
@@ -8584,6 +8600,9 @@ bool Unit::Attack(Unit* victim, bool meleeAttack)
 
         ToCreature()->SendAIReaction(AI_REACTION_HOSTILE);
         ToCreature()->CallAssistance();
+
+        // Remove emote state - will be restored on creature reset
+        SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_ONESHOT_NONE);
     }
 
     // delay offhand weapon attack to next attack time
@@ -10250,6 +10269,19 @@ float Unit::GetUnitSpellCriticalChance(Unit* victim, SpellInfo const* spellProto
     if (Player* modOwner = GetSpellModOwner())
         modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_CRITICAL_CHANCE, crit_chance);
 
+    // for this types the bonus was already added in GetUnitCriticalChance, do not add twice
+    if (spellProto->DmgClass != SPELL_DAMAGE_CLASS_MELEE && spellProto->DmgClass != SPELL_DAMAGE_CLASS_RANGED)
+    {
+        AuraEffectList const& critChanceForCaster = victim->GetAuraEffectsByType(SPELL_AURA_MOD_CRIT_CHANCE_FOR_CASTER);
+        for (AuraEffect const* aurEff : critChanceForCaster)
+        {
+            if (aurEff->GetCasterGUID() != GetGUID() || !aurEff->IsAffectedOnSpell(spellProto))
+                continue;
+
+            crit_chance += aurEff->GetAmount();
+        }
+    }
+
     return crit_chance > 0.0f ? crit_chance : 0.0f;
 }
 
@@ -11454,7 +11486,7 @@ bool Unit::isTargetableForAttack(bool checkFakeDeath) const
         return false;
 
     if (HasFlag(UNIT_FIELD_FLAGS,
-        UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC))
+        UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE))
         return false;
 
     if (GetTypeId() == TYPEID_PLAYER && ToPlayer()->IsGameMaster())

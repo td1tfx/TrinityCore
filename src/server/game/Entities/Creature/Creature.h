@@ -22,7 +22,7 @@
 #include "Common.h"
 #include "Unit.h"
 #include "UpdateMask.h"
-#include "ItemPrototype.h"
+#include "ItemTemplate.h"
 #include "LootMgr.h"
 #include "DatabaseEnv.h"
 #include "Cell.h"
@@ -294,7 +294,8 @@ enum InhabitTypeValues
     INHABIT_GROUND = 1,
     INHABIT_WATER  = 2,
     INHABIT_AIR    = 4,
-    INHABIT_ANYWHERE = INHABIT_GROUND | INHABIT_WATER | INHABIT_AIR
+    INHABIT_ROOT   = 8,
+    INHABIT_ANYWHERE = INHABIT_GROUND | INHABIT_WATER | INHABIT_AIR | INHABIT_ROOT
 };
 
 // Enums used by StringTextData::Type (CreatureEventAI)
