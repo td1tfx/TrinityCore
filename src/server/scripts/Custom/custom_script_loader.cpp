@@ -19,6 +19,7 @@
 void AddSC_Transmogrification();
 void AddSc_npc_tool();
 void AddSC_announce_login();
+void AddSC_cs_world_chat();
 
 
 // The name of this function should match:
@@ -28,5 +29,6 @@ void AddCustomScripts()
     AddSC_Transmogrification();
 	AddSc_npc_tool();
 	AddSC_announce_login();
+	AddSC_cs_world_chat();
 }
 
