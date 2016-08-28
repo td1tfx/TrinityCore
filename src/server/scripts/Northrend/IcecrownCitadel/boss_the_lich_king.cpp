@@ -485,7 +485,7 @@ class TriggerWickedSpirit : public BasicEvent
 
             if (--_counter)
             {
-                _owner->m_Events.AddEvent(this, _owner->m_Events.CalculateTime(3000));
+                _owner->m_Events.AddEvent(this, _owner->m_Events.CalculateTime(8000));
                 return false;
             }
 
@@ -1048,7 +1048,7 @@ class boss_the_lich_king : public CreatureScript
                                     Creature* spawner = triggers.front();
                                     spawner->CastSpell(spawner, SPELL_SUMMON_SPIRIT_BOMB_1, true);  // summons bombs randomly
                                     spawner->CastSpell(spawner, SPELL_SUMMON_SPIRIT_BOMB_2, true);  // summons bombs on players
-                                    spawner->m_Events.AddEvent(new TriggerWickedSpirit(spawner), spawner->m_Events.CalculateTime(3000));
+                                    spawner->m_Events.AddEvent(new TriggerWickedSpirit(spawner), spawner->m_Events.CalculateTime(8000));
                                 }
 
                                 for (SummonList::iterator i = summons.begin(); i != summons.end(); ++i)
@@ -1745,21 +1745,26 @@ class npc_terenas_menethil : public CreatureScript
                 if (damage >= me->GetHealth())
                 {
                     damage = me->GetHealth() - 1;
-                    if (!me->HasAura(SPELL_TERENAS_LOSES_INSIDE) && !IsHeroic())
-                    {
-                        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-                        DoCast(SPELL_TERENAS_LOSES_INSIDE);
-                        _events.ScheduleEvent(EVENT_TELEPORT_BACK, 1000);
-                        if (Creature* warden = me->FindNearestCreature(NPC_SPIRIT_WARDEN, 20.0f))
-                        {
-                            warden->CastSpell((Unit*)NULL, SPELL_DESTROY_SOUL, TRIGGERED_NONE);
-                            warden->DespawnOrUnsummon(2000);
-                        }
-
-                        me->DespawnOrUnsummon(2000);
-                    }
-                }
-            }
+					if (IsHeroic())
+						return;
+					if (!me->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))
+					{
+						_events.Reset();
+						_events.ScheduleEvent(EVENT_TELEPORT_BACK, 1000);
+						if (Creature* warden = me->FindNearestCreature(NPC_SPIRIT_WARDEN, 20.0f))
+						{
+							warden->CastSpell((Unit*)NULL, SPELL_DESTROY_SOUL, false);
+							warden->DespawnOrUnsummon(2000);
+						}
+						me->CastSpell(me, SPELL_TERENAS_LOSES_INSIDE, false);
+						me->SetDisplayId(16946);
+						me->SetReactState(REACT_PASSIVE);
+						me->AttackStop();
+						me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+						me->DespawnOrUnsummon(2000);
+					}
+				}
+			}
 
             void IsSummonedBy(Unit* /*summoner*/) override
             {
@@ -1783,6 +1788,7 @@ class npc_terenas_menethil : public CreatureScript
                     switch (eventId)
                     {
                         case EVENT_FROSTMOURNE_TALK_1:
+							me->SetControlled(false, UNIT_STATE_ROOT);
                             Talk(SAY_TERENAS_INTRO_1);
                             if (IsHeroic())
                                 DoCastAOE(SPELL_RESTORE_SOULS);
@@ -1808,12 +1814,16 @@ class npc_terenas_menethil : public CreatureScript
                             }
                             break;
                         case EVENT_DESTROY_SOUL:
-                            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-                            if (Creature* warden = me->FindNearestCreature(NPC_SPIRIT_WARDEN, 20.0f))
-                                warden->CastSpell((Unit*)NULL, SPELL_DESTROY_SOUL, TRIGGERED_NONE);
-                            DoCast(SPELL_TERENAS_LOSES_INSIDE);
-                            _events.ScheduleEvent(EVENT_TELEPORT_BACK, 1000);
-                            break;
+						if (Creature* warden = me->FindNearestCreature(NPC_SPIRIT_WARDEN, 20.0f))
+							warden->CastSpell((Unit*)NULL, SPELL_DESTROY_SOUL, false);
+							me->CastSpell(me, SPELL_TERENAS_LOSES_INSIDE, false);
+							me->SetDisplayId(16946);
+							me->SetReactState(REACT_PASSIVE);
+							me->AttackStop();
+							me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+							_events.Reset();
+							_events.ScheduleEvent(EVENT_TELEPORT_BACK, 1000);
+							break;
                         case EVENT_TELEPORT_BACK:
                             if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_THE_LICH_KING)))
                                 lichKing->AI()->DoAction(ACTION_TELEPORT_BACK);
